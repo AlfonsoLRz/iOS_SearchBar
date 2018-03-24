@@ -9,17 +9,30 @@
 import UIKit
 import os.log
 
-class MealTableViewController: UITableViewController {
+@available(iOS 11.0, *)
+class MealTableViewController: UITableViewController, UISearchResultsUpdating {
     
     //MARK: Properties
     
+    var filteredMeals = [Meal]()        // Meals obtained from the search process.
     var meals = [Meal]()
+    var updatingMeal: Int?
+    let searchController = UISearchController(searchResultsController: nil)     // The view that will display the results from the search will be this one and not other (nil).
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
         // Use the edit button item provided by the table view controller.
         navigationItem.leftBarButtonItem = editButtonItem
+        
+        // Set up search controller.
+        searchController.searchResultsUpdater = self    // Who is the responsible of updating the displayed results?
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.hidesNavigationBarDuringPresentation = false   // Otherwise the navigation bar disappear so we cannot edit the table view.
+        searchController.searchBar.placeholder = "Search food"
+        navigationItem.searchController = searchController
+        navigationItem.hidesSearchBarWhenScrolling = false
+        definesPresentationContext = true   // Search bar disappear when another view is displayed.
         
         // Load any saved meals, otherwise load sample data.
         if let savedMeals = loadMeals() {
@@ -43,6 +56,10 @@ class MealTableViewController: UITableViewController {
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        if isFiltering() {
+            return filteredMeals.count
+        }
+        
         return meals.count
     }
 
@@ -57,7 +74,12 @@ class MealTableViewController: UITableViewController {
         }
         
         // Fetches the appropriate meal for the data source layout.
-        let meal = meals[indexPath.row]
+        let meal : Meal
+        if isFiltering() {
+            meal = filteredMeals[indexPath.row]
+        } else {
+            meal = meals[indexPath.row]
+        }
         
         cell.nameLabel.text = meal.name
         cell.photoImageView.image = meal.photo
@@ -66,15 +88,11 @@ class MealTableViewController: UITableViewController {
         return cell
     }
     
-
-    
     // Override to support conditional editing of the table view.
     override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
         // Return false if you do not want the specified item to be editable.
         return true
     }
-    
-
     
     // Override to support editing the table view.
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
@@ -88,7 +106,6 @@ class MealTableViewController: UITableViewController {
         }    
     }
     
-
     /*
     // Override to support rearranging the table view.
     override func tableView(_ tableView: UITableView, moveRowAt fromIndexPath: IndexPath, to: IndexPath) {
@@ -103,7 +120,6 @@ class MealTableViewController: UITableViewController {
         return true
     }
     */
-
     
     //MARK: - Navigation
 
@@ -131,13 +147,28 @@ class MealTableViewController: UITableViewController {
             }
             
             let selectedMeal = meals[indexPath.row]
+            updatingMeal = indexPath.row
             mealDetailViewController.meal = selectedMeal
             
         default:
             fatalError("Unexpected Segue Identifier; \(String(describing: segue.identifier))")
         }
     }
-
+    
+    //MARK: Search
+    
+    func isFiltering() -> Bool {
+        return searchController.isActive && !searchBarIsEmpty()
+    }
+    
+    func updateSearchResults(for searchController: UISearchController) {
+        navigationItem.rightBarButtonItem?.isEnabled = false
+        filterContentForSearchText(searchController.searchBar.text!)
+        
+        if !searchController.isActive {
+            navigationItem.rightBarButtonItem?.isEnabled = true
+        }
+    }
     
     //MARK: Actions
     
@@ -145,8 +176,15 @@ class MealTableViewController: UITableViewController {
         if let sourceViewController = sender.source as? MealViewController, let meal = sourceViewController.meal {
             
             if let selectedIndexPath = tableView.indexPathForSelectedRow {
-                // Update an existing meal.
-                meals[selectedIndexPath.row] = meal
+                // Update an existing meal. The meal comes from a filtered table or not?
+                if isFiltering() {
+                    if let index = updatingMeal {
+                        meals[index] = meal
+                    }
+                } else {
+                    meals[selectedIndexPath.row] = meal
+                }
+
                 tableView.reloadRows(at: [selectedIndexPath], with: .none)
             }
             else {
@@ -197,5 +235,14 @@ class MealTableViewController: UITableViewController {
     private func loadMeals() -> [Meal]?  {
         return NSKeyedUnarchiver.unarchiveObject(withFile: Meal.ArchiveURL.path) as? [Meal]
     }
-
+    
+    private func searchBarIsEmpty() -> Bool {
+        return searchController.searchBar.text?.isEmpty ?? true
+    }
+    
+    private func filterContentForSearchText(_ searchText: String, scope: String = "All") {
+        filteredMeals = meals.filter({(meal: Meal) -> Bool in return meal.name.lowercased().contains(searchText.lowercased())})
+            
+        tableView.reloadData()
+    }
 }
