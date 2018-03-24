@@ -10,13 +10,12 @@ import UIKit
 import os.log
 
 @available(iOS 11.0, *)
-class MealTableViewController: UITableViewController, UISearchResultsUpdating {
+class MealTableViewController: UITableViewController, UISearchResultsUpdating, UISearchBarDelegate {
     
     //MARK: Properties
     
     var filteredMeals = [Meal]()        // Meals obtained from the search process.
     var meals = [Meal]()
-    var updatingMeal: Int?
     let searchController = UISearchController(searchResultsController: nil)     // The view that will display the results from the search will be this one and not other (nil).
 
     override func viewDidLoad() {
@@ -33,6 +32,10 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating {
         navigationItem.searchController = searchController
         navigationItem.hidesSearchBarWhenScrolling = false
         definesPresentationContext = true   // Search bar disappear when another view is displayed.
+        
+        // Scopes.
+        searchController.searchBar.scopeButtonTitles = ["Name", "Rating"]
+        searchController.searchBar.delegate = self
         
         // Load any saved meals, otherwise load sample data.
         if let savedMeals = loadMeals() {
@@ -98,8 +101,17 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating {
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             // Delete the row from the data source
-            meals.remove(at: indexPath.row)
+            if isFiltering() {
+                filteredMeals.remove(at: indexPath.row)
+                
+                if let index = meals.index(of: filteredMeals[indexPath.row]) {
+                    meals.remove(at: index)
+                }
+            } else {
+                meals.remove(at: indexPath.row)
+            }
             saveMeals()
+            
             tableView.deleteRows(at: [indexPath], with: .fade)
         } else if editingStyle == .insert {
             // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
@@ -125,7 +137,6 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating {
 
     // In a storyboard-based application, you will often want to do a little preparation before navigation
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        
         super.prepare(for: segue, sender: sender)
         
         switch(segue.identifier ?? "") {
@@ -147,7 +158,6 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating {
             }
             
             let selectedMeal = meals[indexPath.row]
-            updatingMeal = indexPath.row
             mealDetailViewController.meal = selectedMeal
             
         default:
@@ -155,19 +165,22 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating {
         }
     }
     
-    //MARK: Search
+    //MARK: UISearchResultsUpdating Delegate
     
     func isFiltering() -> Bool {
         return searchController.isActive && !searchBarIsEmpty()
     }
     
     func updateSearchResults(for searchController: UISearchController) {
-        navigationItem.rightBarButtonItem?.isEnabled = false
-        filterContentForSearchText(searchController.searchBar.text!)
-        
-        if !searchController.isActive {
-            navigationItem.rightBarButtonItem?.isEnabled = true
-        }
+        let searchBar = searchController.searchBar
+        let scope = searchBar.scopeButtonTitles![searchBar.selectedScopeButtonIndex]
+        filterContentForSearchText(searchController.searchBar.text!, scope: scope)
+    }
+    
+    //MARK: Search Bar Delegate
+    
+    func searchBar(_ searchBar: UISearchBar, selectedScopeButtonIndexDidChange selectedScope: Int) {
+        filterContentForSearchText(searchBar.text!, scope: searchBar.scopeButtonTitles![selectedScope])
     }
     
     //MARK: Actions
@@ -178,8 +191,12 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating {
             if let selectedIndexPath = tableView.indexPathForSelectedRow {
                 // Update an existing meal. The meal comes from a filtered table or not?
                 if isFiltering() {
-                    if let index = updatingMeal {
+                    if let index = meals.index(of: filteredMeals[selectedIndexPath.row]) {
                         meals[index] = meal
+                        
+                        if !mealMatchesSearch(meal: meal, searchText: searchController.searchBar.text!) {
+                            searchController.searchBar.text?.removeAll()
+                        }
                     }
                 } else {
                     meals[selectedIndexPath.row] = meal
@@ -189,7 +206,14 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating {
             }
             else {
                 // Add a new meal.
-                let newIndexPath = IndexPath(row: meals.count, section: 0)
+                let newIndexPath : IndexPath
+                if isFiltering() && mealMatchesSearch(meal: meal, searchText: searchController.searchBar.text!) {
+                    newIndexPath = IndexPath(row: filteredMeals.count, section: 0)
+                    filteredMeals.append(meal)
+                } else {
+                    searchController.searchBar.text?.removeAll()
+                    newIndexPath = IndexPath(row: meals.count, section: 0)
+                }
                 
                 meals.append(meal)
                 tableView.insertRows(at: [newIndexPath], with: .automatic)
@@ -240,8 +264,20 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating {
         return searchController.searchBar.text?.isEmpty ?? true
     }
     
-    private func filterContentForSearchText(_ searchText: String, scope: String = "All") {
-        filteredMeals = meals.filter({(meal: Meal) -> Bool in return meal.name.lowercased().contains(searchText.lowercased())})
+    private func mealMatchesSearch(meal: Meal, searchText: String) -> Bool {
+        return meal.name.lowercased().contains(searchText.lowercased())
+    }
+    
+    private func filterContentForSearchText(_ searchText: String, scope: String = "Name") {
+        filteredMeals = meals.filter({(meal: Meal) -> Bool in
+            if scope == "Name" {
+                return meal.name.lowercased().contains(searchText.lowercased())
+            } else if scope == "Rating" {
+                return searchText == String(meal.rating)
+            } else {
+                fatalError("Received unknown scope: \(scope)")
+            }
+        })
             
         tableView.reloadData()
     }
