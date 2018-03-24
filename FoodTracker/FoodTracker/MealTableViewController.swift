@@ -30,8 +30,8 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         searchController.hidesNavigationBarDuringPresentation = false   // Otherwise the navigation bar disappear so we cannot edit the table view.
         searchController.searchBar.placeholder = "Search food"
         navigationItem.searchController = searchController
-        navigationItem.hidesSearchBarWhenScrolling = false
-        definesPresentationContext = true   // Search bar disappear when another view is displayed.
+        navigationItem.hidesSearchBarWhenScrolling = false      // Necessary to show the search bar from the start.
+        definesPresentationContext = true   // Search bar disappears when another view is displayed.
         
         // Scopes.
         searchController.searchBar.scopeButtonTitles = ["Name", "Rating"]
@@ -40,11 +40,11 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         // Load any saved meals, otherwise load sample data.
         if let savedMeals = loadMeals() {
             meals += savedMeals
-        }
-        else {
+        } else {
             // Load the sample data.
             loadSampleMeals()
         }
+
     }
 
     override func didReceiveMemoryWarning() {
@@ -68,7 +68,6 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
 
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        
         // Table view cells are reused and should be dequeued using a cell identifier.
         let cellIdentifier = "MealTableViewCell"
         
@@ -157,7 +156,12 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
                 fatalError("The selected cell is not being displayed by the table")
             }
             
-            let selectedMeal = meals[indexPath.row]
+            let selectedMeal : Meal
+            if isFiltering() {
+                selectedMeal = filteredMeals[indexPath.row]
+            } else {
+                selectedMeal = meals[indexPath.row]
+            }
             mealDetailViewController.meal = selectedMeal
             
         default:
@@ -189,34 +193,40 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         if let sourceViewController = sender.source as? MealViewController, let meal = sourceViewController.meal {
             
             if let selectedIndexPath = tableView.indexPathForSelectedRow {
+                var removeRow = false
+                
                 // Update an existing meal. The meal comes from a filtered table or not?
                 if isFiltering() {
                     if let index = meals.index(of: filteredMeals[selectedIndexPath.row]) {
                         meals[index] = meal
                         
                         if !mealMatchesSearch(meal: meal, searchText: searchController.searchBar.text!) {
-                            searchController.searchBar.text?.removeAll()
+                            filteredMeals.remove(at: selectedIndexPath.row)
+                            removeRow = true
                         }
                     }
                 } else {
                     meals[selectedIndexPath.row] = meal
                 }
-
-                tableView.reloadRows(at: [selectedIndexPath], with: .none)
+                
+                if !removeRow {
+                    tableView.reloadRows(at: [selectedIndexPath], with: .none)
+                }
             }
             else {
                 // Add a new meal.
-                let newIndexPath : IndexPath
+                var newIndexPath : IndexPath?
                 if isFiltering() && mealMatchesSearch(meal: meal, searchText: searchController.searchBar.text!) {
                     newIndexPath = IndexPath(row: filteredMeals.count, section: 0)
                     filteredMeals.append(meal)
-                } else {
-                    searchController.searchBar.text?.removeAll()
+                } else if !isFiltering(){
                     newIndexPath = IndexPath(row: meals.count, section: 0)
                 }
                 
                 meals.append(meal)
-                tableView.insertRows(at: [newIndexPath], with: .automatic)
+                if let indexPath = newIndexPath {
+                    tableView.insertRows(at: [indexPath], with: .automatic)
+                }
             }
             
             // Save the meals.
@@ -265,7 +275,15 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
     }
     
     private func mealMatchesSearch(meal: Meal, searchText: String) -> Bool {
-        return meal.name.lowercased().contains(searchText.lowercased())
+        let scope = searchController.searchBar.scopeButtonTitles![searchController.searchBar.selectedScopeButtonIndex]
+        
+        if  scope == "Name" {
+            return meal.name.lowercased().contains(searchText.lowercased())
+        } else if scope == "Rating" {
+            return String(meal.rating).contains(searchText)
+        } else {
+            fatalError("Recevied unknown scope: \(scope)")
+        }
     }
     
     private func filterContentForSearchText(_ searchText: String, scope: String = "Name") {
