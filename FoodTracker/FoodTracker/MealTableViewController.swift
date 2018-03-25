@@ -28,7 +28,7 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         searchController.searchResultsUpdater = self    // Who is the responsible of updating the displayed results?
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.hidesNavigationBarDuringPresentation = false   // Otherwise the navigation bar disappear so we cannot edit the table view.
-        searchController.searchBar.placeholder = "Search food"
+        searchController.searchBar.placeholder = "Search meal"
         navigationItem.searchController = searchController
         navigationItem.hidesSearchBarWhenScrolling = false      // Necessary to show the search bar from the start.
         definesPresentationContext = true   // Search bar disappears when another view is displayed.
@@ -101,11 +101,10 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         if editingStyle == .delete {
             // Delete the row from the data source
             if isFiltering() {
-                filteredMeals.remove(at: indexPath.row)
-                
                 if let index = meals.index(of: filteredMeals[indexPath.row]) {
                     meals.remove(at: index)
                 }
+                filteredMeals.remove(at: indexPath.row)
             } else {
                 meals.remove(at: indexPath.row)
             }
