@@ -14,8 +14,8 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
     
     //MARK: Properties
     
-    var filteredMeals = [Meal]()        // Meals obtained from the search process.
-    var meals = [Meal]()
+    var filteredMeals = [Meal]()                                                // Meals obtained from the search process.
+    var meals = [Meal]()                                                        // Main array of meals.
     let searchController = UISearchController(searchResultsController: nil)     // The view that will display the results from the search will be this one and not other (nil).
 
     override func viewDidLoad() {
@@ -52,7 +52,7 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         // Dispose of any resources that can be recreated.
     }
 
-    //MARK: - Table view data source
+    //MARK: Table view data source
 
     override func numberOfSections(in tableView: UITableView) -> Int {
         return 1
@@ -66,7 +66,6 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         return meals.count
     }
 
-    
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         // Table view cells are reused and should be dequeued using a cell identifier.
         let cellIdentifier = "MealTableViewCell"
@@ -90,7 +89,6 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         return cell
     }
     
-    // Override to support conditional editing of the table view.
     override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
         // Return false if you do not want the specified item to be editable.
         return true
@@ -101,7 +99,7 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         if editingStyle == .delete {
             // Delete the row from the data source
             if isFiltering() {
-                if let index = meals.index(of: filteredMeals[indexPath.row]) {
+                if let index = meals.index(of: filteredMeals[indexPath.row]) {      // We don't know the index at the main array.
                     meals.remove(at: index)
                 }
                 filteredMeals.remove(at: indexPath.row)
@@ -116,24 +114,9 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         }    
     }
     
-    /*
-    // Override to support rearranging the table view.
-    override func tableView(_ tableView: UITableView, moveRowAt fromIndexPath: IndexPath, to: IndexPath) {
-
-    }
-    */
-
-    /*
-    // Override to support conditional rearranging of the table view.
-    override func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the item to be re-orderable.
-        return true
-    }
-    */
-    
     //MARK: - Navigation
 
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
+    // In a storyboard-based application, you will often want to do a little preparation before navigation.
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         super.prepare(for: segue, sender: sender)
         
@@ -155,6 +138,7 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
                 fatalError("The selected cell is not being displayed by the table")
             }
             
+            // Depending on if the search is active or not, we'll take the meal from an specific array.
             let selectedMeal : Meal
             if isFiltering() {
                 selectedMeal = filteredMeals[indexPath.row]
@@ -192,14 +176,14 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         if let sourceViewController = sender.source as? MealViewController, let meal = sourceViewController.meal {
             
             if let selectedIndexPath = tableView.indexPathForSelectedRow {
-                var removeRow = false
+                var removeRow = false       // If we remove the updated array from filteredMeals we don't have to reload it.
                 
                 // Update an existing meal. The meal comes from a filtered table or not?
                 if isFiltering() {
                     if let index = meals.index(of: filteredMeals[selectedIndexPath.row]) {
                         meals[index] = meal
                         
-                        if !mealMatchesSearch(meal: meal, searchText: searchController.searchBar.text!) {
+                        if !mealMatchesSearch(meal: meal, searchText: searchController.searchBar.text!) {   // Un update could make the meal to not match the currently active search.
                             filteredMeals.remove(at: selectedIndexPath.row)
                             removeRow = true
                         }
@@ -235,6 +219,25 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
     
     //MARK: Private Methods
     
+    // Result of a search. Basically compares the input text and the meal scope (Name of Rating)
+    private func filterContentForSearchText(_ searchText: String, scope: String = "Name") {
+        filteredMeals = meals.filter({(meal: Meal) -> Bool in
+            if scope == "Name" {
+                return meal.name.lowercased().contains(searchText.lowercased())
+            } else if scope == "Rating" {
+                return searchText == String(meal.rating)
+            } else {
+                fatalError("Received unknown scope: \(scope)")
+            }
+        })
+        
+        tableView.reloadData()
+    }
+    
+    private func loadMeals() -> [Meal]?  {
+        return NSKeyedUnarchiver.unarchiveObject(withFile: Meal.ArchiveURL.path) as? [Meal]
+    }
+    
     private func loadSampleMeals() {
         
         let photo1 = UIImage(named: "meal1")
@@ -256,23 +259,6 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         meals += [meal1, meal2, meal3]
     }
     
-    private func saveMeals() {
-        let isSuccessfulSave = NSKeyedArchiver.archiveRootObject(meals, toFile: Meal.ArchiveURL.path)
-        if isSuccessfulSave {
-            os_log("Meals successfully saved.", log: OSLog.default, type: .debug)
-        } else {
-            os_log("Failed to save meals...", log: OSLog.default, type: .error)
-        }
-    }
-    
-    private func loadMeals() -> [Meal]?  {
-        return NSKeyedUnarchiver.unarchiveObject(withFile: Meal.ArchiveURL.path) as? [Meal]
-    }
-    
-    private func searchBarIsEmpty() -> Bool {
-        return searchController.searchBar.text?.isEmpty ?? true
-    }
-    
     private func mealMatchesSearch(meal: Meal, searchText: String) -> Bool {
         let scope = searchController.searchBar.scopeButtonTitles![searchController.searchBar.selectedScopeButtonIndex]
         
@@ -285,17 +271,16 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         }
     }
     
-    private func filterContentForSearchText(_ searchText: String, scope: String = "Name") {
-        filteredMeals = meals.filter({(meal: Meal) -> Bool in
-            if scope == "Name" {
-                return meal.name.lowercased().contains(searchText.lowercased())
-            } else if scope == "Rating" {
-                return searchText == String(meal.rating)
-            } else {
-                fatalError("Received unknown scope: \(scope)")
-            }
-        })
-            
-        tableView.reloadData()
+    private func saveMeals() {
+        let isSuccessfulSave = NSKeyedArchiver.archiveRootObject(meals, toFile: Meal.ArchiveURL.path)
+        if isSuccessfulSave {
+            os_log("Meals successfully saved.", log: OSLog.default, type: .debug)
+        } else {
+            os_log("Failed to save meals...", log: OSLog.default, type: .error)
+        }
+    }
+    
+    private func searchBarIsEmpty() -> Bool {
+        return searchController.searchBar.text?.isEmpty ?? true
     }
 }
