@@ -23,6 +23,7 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
      */
     var meal: Meal?
     
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -41,6 +42,7 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
         updateSaveButtonState()
     }
     
+    
     //MARK: UITextFieldDelegate
     
     func textFieldDidBeginEditing(_ textField: UITextField) {
@@ -58,6 +60,7 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
         updateSaveButtonState()
         navigationItem.title = textField.text
     }
+    
     
     //MARK: UIImagePickerControllerDelegate
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
@@ -78,6 +81,7 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
         // Dismiss the picker.
         dismiss(animated: true, completion: nil)
     }
+    
     
     //MARK: Navigation
     
@@ -115,6 +119,7 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
         meal = Meal(name: name, photo: photo, rating: rating)
     }
     
+    
     //MARK: Actions
     @IBAction func selectImageFromPhotoLibrary(_ sender: UITapGestureRecognizer) {
         
@@ -131,6 +136,7 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
         imagePickerController.delegate = self
         present(imagePickerController, animated: true, completion: nil)
     }
+    
     
     //MARK: Private Methods
     

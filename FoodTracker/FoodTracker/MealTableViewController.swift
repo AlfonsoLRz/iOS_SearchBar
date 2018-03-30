@@ -18,6 +18,7 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
     var meals = [Meal]()                                                        // Main array of meals.
     let searchController = UISearchController(searchResultsController: nil)     // The view that will display the results from the search will be this one and not other (nil).
 
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -25,13 +26,13 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         navigationItem.leftBarButtonItem = editButtonItem
         
         // Set up search controller.
-        searchController.searchResultsUpdater = self    // Who is the responsible of updating the displayed results?
+        searchController.searchResultsUpdater = self                    // Who is the responsible of updating the displayed results?
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.hidesNavigationBarDuringPresentation = false   // Otherwise the navigation bar disappear so we cannot edit the table view.
         searchController.searchBar.placeholder = "Search meal"
         navigationItem.searchController = searchController
-        navigationItem.hidesSearchBarWhenScrolling = false      // Necessary to show the search bar from the start.
-        definesPresentationContext = true   // Search bar disappears when another view is displayed.
+        navigationItem.hidesSearchBarWhenScrolling = false              // Necessary to show the search bar from the start.
+        definesPresentationContext = true                               // Search bar disappears when another view is displayed.
         
         // Scopes.
         searchController.searchBar.scopeButtonTitles = ["Name", "Rating"]
@@ -52,6 +53,7 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         // Dispose of any resources that can be recreated.
     }
 
+    
     //MARK: Table view data source
 
     override func numberOfSections(in tableView: UITableView) -> Int {
@@ -94,10 +96,9 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         return true
     }
     
-    // Override to support editing the table view.
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
-            // Delete the row from the data source
+            // Delete the row from the data source,
             if isFiltering() {
                 if let index = meals.index(of: filteredMeals[indexPath.row]) {      // We don't know the index at the main array.
                     meals.remove(at: index)
@@ -109,12 +110,10 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
             saveMeals()
             
             tableView.deleteRows(at: [indexPath], with: .fade)
-        } else if editingStyle == .insert {
-            // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-        }    
+        }
     }
     
-    //MARK: - Navigation
+    //MARK: Navigation
 
     // In a storyboard-based application, you will often want to do a little preparation before navigation.
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
@@ -152,6 +151,7 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         }
     }
     
+    
     //MARK: UISearchResultsUpdating Delegate
     
     func isFiltering() -> Bool {
@@ -164,11 +164,13 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         filterContentForSearchText(searchController.searchBar.text!, scope: scope)
     }
     
+    
     //MARK: Search Bar Delegate
     
     func searchBar(_ searchBar: UISearchBar, selectedScopeButtonIndexDidChange selectedScope: Int) {
         filterContentForSearchText(searchBar.text!, scope: searchBar.scopeButtonTitles![selectedScope])
     }
+    
     
     //MARK: Actions
     
@@ -217,9 +219,10 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         }
     }
     
+    
     //MARK: Private Methods
     
-    // Result of a search. Basically compares the input text and the meal scope (Name of Rating)
+    // Result of a search. Basically compares the input text and the meal scope (Name of Rating).
     private func filterContentForSearchText(_ searchText: String, scope: String = "Name") {
         filteredMeals = meals.filter({(meal: Meal) -> Bool in
             if scope == "Name" {
