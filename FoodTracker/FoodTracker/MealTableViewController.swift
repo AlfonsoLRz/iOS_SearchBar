@@ -19,6 +19,11 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
     let searchController = UISearchController(searchResultsController: nil)     // The view that will display the results from the search will be this one and not other (nil).
 
     
+    /**
+ 
+     Initializes the search and the scope bar as well as the meal array. Meals are initialized by loading the objects saved in files.
+ 
+    */
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -28,10 +33,9 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         // Set up search controller.
         searchController.searchResultsUpdater = self                    // Who is the responsible of updating the displayed results?
         searchController.obscuresBackgroundDuringPresentation = false
-        searchController.hidesNavigationBarDuringPresentation = false   // Otherwise the navigation bar disappear so we cannot edit the table view.
         searchController.searchBar.placeholder = "Search meal"
         navigationItem.searchController = searchController
-        navigationItem.hidesSearchBarWhenScrolling = false              // Necessary to show the search bar from the start.
+        navigationItem.hidesSearchBarWhenScrolling = false              // Show the search bar from the start.
         definesPresentationContext = true                               // Search bar disappears when another view is displayed.
         
         // Scopes.
@@ -56,10 +60,21 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
     
     //MARK: Table view data source
 
+    /**
+     
+     Returns the number of sections of the table view.
+     
+    */
     override func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
 
+    
+    /**
+ 
+     Returns the number of meals in our section. We'll take this number from two arrays, depending on if there's any active search.
+     
+    */
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if isFiltering() {
             return filteredMeals.count
@@ -68,6 +83,11 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         return meals.count
     }
 
+    /**
+ 
+     Returns a row from the table view. That cell contains the attributes of the meal: title, image and rating.
+     
+    */
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         // Table view cells are reused and should be dequeued using a cell identifier.
         let cellIdentifier = "MealTableViewCell"
@@ -91,11 +111,20 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         return cell
     }
     
+    /**
+ 
+     Returns true since a row is always editable.
+     
+    */
     override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the specified item to be editable.
         return true
     }
     
+    /**
+ 
+     Operations on the table view rows. Only delete is allowed.
+     
+    */
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             // Delete the row from the data source,
@@ -113,9 +142,14 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         }
     }
     
+    
     //MARK: Navigation
 
-    // In a storyboard-based application, you will often want to do a little preparation before navigation.
+    /**
+ 
+     Prepatation before segues to MealViewController. It depends on the context, Add or Update meal.
+     
+    */
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         super.prepare(for: segue, sender: sender)
         
@@ -154,10 +188,20 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
     
     //MARK: UISearchResultsUpdating Delegate
     
+    /**
+     
+     Returns a boolean value that takes into account if there's an active search at this moment.
+ 
+    */
     func isFiltering() -> Bool {
         return searchController.isActive && !searchBarIsEmpty()
     }
     
+    /**
+ 
+     Event received when any update occurs in the search bar.
+     
+    */
     func updateSearchResults(for searchController: UISearchController) {
         let searchBar = searchController.searchBar
         let scope = searchBar.scopeButtonTitles![searchBar.selectedScopeButtonIndex]
@@ -167,6 +211,11 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
     
     //MARK: Search Bar Delegate
     
+    /**
+     
+     Search bar filter.
+ 
+    */
     func searchBar(_ searchBar: UISearchBar, selectedScopeButtonIndexDidChange selectedScope: Int) {
         filterContentForSearchText(searchBar.text!, scope: searchBar.scopeButtonTitles![selectedScope])
     }
@@ -174,6 +223,11 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
     
     //MARK: Actions
     
+    /**
+     
+     Unwind segue from MealViewController. Possible events: addition or update.
+ 
+    */
     @IBAction func unwindToMealList(sender: UIStoryboardSegue) {
         if let sourceViewController = sender.source as? MealViewController, let meal = sourceViewController.meal {
             
@@ -200,18 +254,10 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
             }
             else {
                 // Add a new meal.
-                var newIndexPath : IndexPath?
-                if isFiltering() && mealMatchesSearch(meal: meal, searchText: searchController.searchBar.text!) {
-                    newIndexPath = IndexPath(row: filteredMeals.count, section: 0)
-                    filteredMeals.append(meal)
-                } else if !isFiltering(){
-                    newIndexPath = IndexPath(row: meals.count, section: 0)
-                }
+                let newIndexPath = IndexPath(row: meals.count, section: 0)
                 
                 meals.append(meal)
-                if let indexPath = newIndexPath {
-                    tableView.insertRows(at: [indexPath], with: .automatic)
-                }
+                tableView.insertRows(at: [newIndexPath], with: .automatic)
             }
             
             // Save the meals.
@@ -222,7 +268,11 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
     
     //MARK: Private Methods
     
-    // Result of a search. Basically compares the input text and the meal scope (Name of Rating).
+    /**
+ 
+     Result of a search. Basically compares the input text and the meal scope (Name of Rating) and reloads the table view data.
+ 
+    */
     private func filterContentForSearchText(_ searchText: String, scope: String = "Name") {
         filteredMeals = meals.filter({(meal: Meal) -> Bool in
             if scope == "Name" {
@@ -237,12 +287,21 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         tableView.reloadData()
     }
     
+    /**
+     
+     Load meals from the file specified by the class Meal.
+ 
+    */
     private func loadMeals() -> [Meal]?  {
         return NSKeyedUnarchiver.unarchiveObject(withFile: Meal.ArchiveURL.path) as? [Meal]
     }
     
+    /**
+ 
+     Sample meals in case there is not any meal saved at the file.
+ 
+    */
     private func loadSampleMeals() {
-        
         let photo1 = UIImage(named: "meal1")
         let photo2 = UIImage(named: "meal2")
         let photo3 = UIImage(named: "meal3")
@@ -262,6 +321,11 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         meals += [meal1, meal2, meal3]
     }
     
+    /**
+     
+     Returns true if the meal matches a search. That happens if the meal contains the text from the search bar, at its title, or its category.
+ 
+    */
     private func mealMatchesSearch(meal: Meal, searchText: String) -> Bool {
         let scope = searchController.searchBar.scopeButtonTitles![searchController.searchBar.selectedScopeButtonIndex]
         
@@ -274,6 +338,11 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         }
     }
     
+    /**
+     
+     Save the meals in the file specified by the class Meal.
+ 
+    */
     private func saveMeals() {
         let isSuccessfulSave = NSKeyedArchiver.archiveRootObject(meals, toFile: Meal.ArchiveURL.path)
         if isSuccessfulSave {
@@ -283,6 +352,11 @@ class MealTableViewController: UITableViewController, UISearchResultsUpdating, U
         }
     }
     
+    /**
+     
+     Returns a boolean value depending on if the search bar is empty.
+ 
+     */
     private func searchBarIsEmpty() -> Bool {
         return searchController.searchBar.text?.isEmpty ?? true
     }
